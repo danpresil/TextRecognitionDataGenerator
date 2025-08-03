@@ -87,24 +87,45 @@ def _generate_horizontal_text(
 
     space_width = int(get_text_width(image_font, " ") * space_width)
 
-    if word_split:
-        splitted_text = []
-        for w in text.split(" "):
-            splitted_text.append(w)
-            splitted_text.append(" ")
-        splitted_text.pop()
-    else:
-        splitted_text = text
+    lines = text.replace("\\n", "\n").replace("/n", "\n").split("\n")
 
-    piece_widths = [
-        _compute_character_width(image_font, p) if p != " " else space_width
-        for p in splitted_text
-    ]
-    text_width = sum(piece_widths)
-    if not word_split:
-        text_width += character_spacing * (len(text) - 1)
+    line_splitted_text = []
+    line_piece_widths = []
+    line_widths = []
+    line_heights = []
 
-    text_height = max([get_text_height(image_font, p) for p in splitted_text])
+    for line in lines:
+        if word_split:
+            splitted_text = []
+            for w in line.split(" "):
+                splitted_text.append(w)
+                splitted_text.append(" ")
+            if splitted_text:
+                splitted_text.pop()
+        else:
+            splitted_text = line
+
+        piece_widths = [
+            _compute_character_width(image_font, p) if p != " " else space_width
+            for p in splitted_text
+        ]
+
+        text_width = sum(piece_widths)
+        if not word_split:
+            text_width += character_spacing * (len(line) - 1)
+
+        if splitted_text:
+            text_height = max([get_text_height(image_font, p) for p in splitted_text])
+        else:
+            text_height = get_text_height(image_font, " ")
+
+        line_splitted_text.append(splitted_text)
+        line_piece_widths.append(piece_widths)
+        line_widths.append(text_width)
+        line_heights.append(text_height)
+
+    text_width = max(line_widths) if line_widths else 0
+    text_height = sum(line_heights)
 
     txt_img = Image.new("RGBA", (text_width, text_height), (0, 0, 0, 0))
     txt_mask = Image.new("RGB", (text_width, text_height), (0, 0, 0))
@@ -131,23 +152,43 @@ def _generate_horizontal_text(
         rnd.randint(min(stroke_c1[2], stroke_c2[2]), max(stroke_c1[2], stroke_c2[2])),
     )
 
-    for i, p in enumerate(splitted_text):
-        txt_img_draw.text(
-            (sum(piece_widths[0:i]) + i * character_spacing * int(not word_split), 0),
-            p,
-            fill=fill,
-            font=image_font,
-            stroke_width=stroke_width,
-            stroke_fill=stroke_fill,
-        )
-        txt_mask_draw.text(
-            (sum(piece_widths[0:i]) + i * character_spacing * int(not word_split), 0),
-            p,
-            fill=((i + 1) // (255 * 255), (i + 1) // 255, (i + 1) % 255),
-            font=image_font,
-            stroke_width=stroke_width,
-            stroke_fill=stroke_fill,
-        )
+    char_index = 0
+    y_offset = 0
+    for splitted_text, piece_widths, line_height in zip(
+        line_splitted_text, line_piece_widths, line_heights
+    ):
+        x_offset = 0
+        for i, p in enumerate(splitted_text):
+            txt_img_draw.text(
+                (
+                    x_offset + i * character_spacing * int(not word_split),
+                    y_offset,
+                ),
+                p,
+                fill=fill,
+                font=image_font,
+                stroke_width=stroke_width,
+                stroke_fill=stroke_fill,
+            )
+            txt_mask_draw.text(
+                (
+                    x_offset + i * character_spacing * int(not word_split),
+                    y_offset,
+                ),
+                p,
+                fill=
+                (
+                    (char_index + 1) // (255 * 255),
+                    (char_index + 1) // 255,
+                    (char_index + 1) % 255,
+                ),
+                font=image_font,
+                stroke_width=stroke_width,
+                stroke_fill=stroke_fill,
+            )
+            x_offset += piece_widths[i]
+            char_index += 1
+        y_offset += line_height
 
     if fit:
         return txt_img.crop(txt_img.getbbox()), txt_mask.crop(txt_img.getbbox())

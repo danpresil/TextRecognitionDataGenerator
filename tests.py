@@ -15,7 +15,7 @@ except:
 from diffimg import diff
 
 from trdg.data_generator import FakeTextDataGenerator
-from trdg import background_generator
+from trdg import background_generator, computer_text_generator
 from trdg.generators import (
     GeneratorFromDict,
     GeneratorFromRandom,
@@ -118,6 +118,31 @@ class DataGenerator(unittest.TestCase):
         )
 
         self.assertTrue(len(strings) == 2 and len(strings[0].split(" ")) == 3)
+
+    def test_multiline_text_generation(self):
+        single, _ = computer_text_generator.generate(
+            "TEST",
+            "tests/font.ttf",
+            "#010101",
+            32,
+            0,
+            1,
+            0,
+            True,
+            False,
+        )
+        multi, _ = computer_text_generator.generate(
+            "TEST\nTEST",
+            "tests/font.ttf",
+            "#010101",
+            32,
+            0,
+            1,
+            0,
+            True,
+            False,
+        )
+        self.assertTrue(multi.size[1] > single.size[1])
 
     def test_generate_data_with_format(self):
         FakeTextDataGenerator.generate(
