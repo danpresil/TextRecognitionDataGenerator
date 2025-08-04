@@ -7,6 +7,8 @@ import re
 import unicodedata
 from typing import List, Tuple
 
+from fontTools.ttLib import TTFont
+
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 
@@ -147,3 +149,28 @@ def get_text_height(image_font: ImageFont, text: str) -> int:
     """
     left, top, right, bottom = image_font.getbbox(text)
     return bottom
+
+
+def font_has_glyph(font_path: str, char: str) -> bool:
+    """
+    Check whether a font contains a glyph for a given character.
+    """
+    try:
+        font = TTFont(font_path)
+        cmap = font.getBestCmap()
+        return ord(char) in cmap
+    except Exception:
+        return False
+    finally:
+        try:
+            font.close()
+        except Exception:
+            pass
+
+
+def filter_fonts_for_text(text: str, fonts: List[str]) -> List[str]:
+    """
+    Filter a list of fonts, returning those that support all characters in the text.
+    """
+    required_chars = set(text)
+    return [f for f in fonts if all(font_has_glyph(f, c) for c in required_chars)]
