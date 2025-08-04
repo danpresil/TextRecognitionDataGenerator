@@ -68,6 +68,13 @@ class Generators(unittest.TestCase):
             self.assertTrue(img.size[1] == 32, "Shape is not right")
             i += 1
 
+    def test_generator_from_wikipedia_rtl(self):
+        generator = GeneratorFromWikipedia(
+            count=1, language="ar", rtl=True, fonts=["tests/font_ar.ttf"]
+        )
+        img, lbl = next(generator)
+        self.assertTrue(img.size[1] == 32 and isinstance(lbl, str))
+
     def test_generator_from_dict_stops(self):
         generator = GeneratorFromDict(count=1)
         next(generator)
