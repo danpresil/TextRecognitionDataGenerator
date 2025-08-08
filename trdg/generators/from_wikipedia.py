@@ -42,11 +42,13 @@ class GeneratorFromWikipedia:
         stroke_fill: str = "#282828",
         image_mode: str = "RGB",
         output_bboxes: int = 0,
+        rtl: bool = False,
     ):
         self.generated_count = 0
         self.count = count
         self.minimum_length = minimum_length
         self.language = language
+        self.rtl = rtl
 
         self.batch_size = min(max(count, 1), 1000)
         self.steps_until_regeneration = self.batch_size
@@ -81,6 +83,7 @@ class GeneratorFromWikipedia:
             stroke_fill,
             image_mode,
             output_bboxes,
+            rtl,
         )
 
     def __iter__(self):
@@ -94,8 +97,15 @@ class GeneratorFromWikipedia:
 
     def next(self):
         if self.generator.generated_count >= self.steps_until_regeneration:
-            self.generator.strings = create_strings_from_wikipedia(
+            new_strings = create_strings_from_wikipedia(
                 self.minimum_length, self.batch_size, self.language
             )
+            if self.generator.rtl:
+                self.generator.orig_strings = new_strings
+                self.generator.strings = self.generator.reshape_rtl(
+                    new_strings, self.generator.rtl_shaper
+                )
+            else:
+                self.generator.strings = new_strings
             self.steps_until_regeneration += self.batch_size
         return self.generator.next()
