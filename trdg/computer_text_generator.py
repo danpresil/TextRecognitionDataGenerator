@@ -1,8 +1,8 @@
 import random as rnd
-from typing import Tuple
+from typing import Optional, Tuple
 from PIL import Image, ImageColor, ImageDraw, ImageFilter, ImageFont
 
-from trdg.utils import get_text_width, get_text_height
+from trdg.utils import get_text_width, get_text_height, font_has_glyph
 
 # Thai Unicode reference: https://jrgraphix.net/r/Unicode/0E00-0E7F
 TH_TONE_MARKS = [
@@ -19,6 +19,32 @@ TH_UNDER_VOWELS = ["0xe38", "0xe39", "\0xe3A"]
 TH_UPPER_VOWELS = ["0xe31", "0xe34", "0xe35", "0xe36", "0xe37"]
 
 
+# Internal helper to decide which font should be used for a given character
+def _select_font_for_char(
+    character: str,
+    font_path: str,
+    image_font: ImageFont,
+    missing_glyph_strategy: str,
+    fallback_font: Optional[ImageFont] = None,
+    fallback_font_path: Optional[str] = None,
+):
+    if character == " ":
+        return image_font
+
+    if font_has_glyph(font_path, character):
+        return image_font
+
+    if (
+        missing_glyph_strategy == "fallback"
+        and fallback_font
+        and fallback_font_path
+        and font_has_glyph(fallback_font_path, character)
+    ):
+        return fallback_font
+
+    return None
+
+
 def generate(
     text: str,
     font: str,
@@ -31,6 +57,8 @@ def generate(
     word_split: bool,
     stroke_width: int = 0,
     stroke_fill: str = "#282828",
+    missing_glyph_strategy: str = "fallback",
+    fallback_font: Optional[str] = None,
 ) -> Tuple:
     if orientation == 0:
         return _generate_horizontal_text(
@@ -44,6 +72,8 @@ def generate(
             word_split,
             stroke_width,
             stroke_fill,
+            missing_glyph_strategy,
+            fallback_font,
         )
     elif orientation == 1:
         return _generate_vertical_text(
@@ -56,19 +86,40 @@ def generate(
             fit,
             stroke_width,
             stroke_fill,
+            missing_glyph_strategy,
+            fallback_font,
         )
     else:
         raise ValueError("Unknown orientation " + str(orientation))
 
 
-def _compute_character_width(image_font: ImageFont, character: str) -> int:
+def _compute_character_width(
+    image_font: ImageFont,
+    font_path: str,
+    character: str,
+    missing_glyph_strategy: str,
+    fallback_font: Optional[ImageFont] = None,
+    fallback_font_path: Optional[str] = None,
+) -> int:
     if len(character) == 1 and (
         "{0:#x}".format(ord(character))
         in TH_TONE_MARKS + TH_UNDER_VOWELS + TH_UNDER_VOWELS + TH_UPPER_VOWELS
     ):
         return 0
+
+    selected_font = _select_font_for_char(
+        character,
+        font_path,
+        image_font,
+        missing_glyph_strategy,
+        fallback_font,
+        fallback_font_path,
+    )
+    if selected_font is None:
+        return 0
+
     # Casting as int to preserve the old behavior
-    return round(image_font.getlength(character))
+    return round(selected_font.getlength(character))
 
 
 def _generate_horizontal_text(
@@ -82,47 +133,66 @@ def _generate_horizontal_text(
     word_split: bool,
     stroke_width: int = 0,
     stroke_fill: str = "#282828",
+    missing_glyph_strategy: str = "fallback",
+    fallback_font: Optional[str] = None,
 ) -> Tuple:
     image_font = ImageFont.truetype(font=font, size=font_size)
+    fallback_image_font = (
+        ImageFont.truetype(font=fallback_font, size=font_size)
+        if fallback_font
+        else None
+    )
 
     space_width = int(get_text_width(image_font, " ") * space_width)
 
     lines = text.replace("\\n", "\n").replace("/n", "\n").split("\n")
 
-    line_splitted_text = []
-    line_piece_widths = []
+    line_chars = []
     line_widths = []
     line_heights = []
 
     for line in lines:
-        if word_split:
-            splitted_text = []
-            for w in line.split(" "):
-                splitted_text.append(w)
-                splitted_text.append(" ")
-            if splitted_text:
-                splitted_text.pop()
-        else:
-            splitted_text = line
+        chars_info = []
+        for c in line:
+            if c == " ":
+                chars_info.append((c, space_width, image_font))
+                continue
 
-        piece_widths = [
-            _compute_character_width(image_font, p) if p != " " else space_width
-            for p in splitted_text
-        ]
+            selected_font = _select_font_for_char(
+                c,
+                font,
+                image_font,
+                missing_glyph_strategy,
+                fallback_image_font,
+                fallback_font,
+            )
+            if selected_font is None:
+                continue
 
-        text_width = sum(piece_widths)
+            width = _compute_character_width(
+                image_font,
+                font,
+                c,
+                missing_glyph_strategy,
+                fallback_image_font,
+                fallback_font,
+            )
+            chars_info.append((c, width, selected_font))
+
+        line_width = sum(w for _, w, _ in chars_info)
         if not word_split:
-            text_width += character_spacing * (len(line) - 1)
+            line_width += character_spacing * (len(chars_info) - 1)
 
-        if splitted_text:
-            text_height = max([get_text_height(image_font, p) for p in splitted_text])
+        if chars_info:
+            line_height = max(
+                [get_text_height(f, ch) for ch, _, f in chars_info]
+            )
         else:
-            text_height = get_text_height(image_font, " ")
+            line_height = get_text_height(image_font, " ")
 
-        line_splitted_text.append(splitted_text)
-        line_piece_widths.append(piece_widths)
-        line_widths.append(text_width)
-        line_heights.append(text_height)
+        line_chars.append(chars_info)
+        line_widths.append(line_width)
+        line_heights.append(line_height)
 
     text_width = max(line_widths) if line_widths else 0
     text_height = sum(line_heights)
@@ -154,19 +224,17 @@ def _generate_horizontal_text(
 
     char_index = 0
     y_offset = 0
-    for splitted_text, piece_widths, line_height in zip(
-        line_splitted_text, line_piece_widths, line_heights
-    ):
+    for chars_info, line_height in zip(line_chars, line_heights):
         x_offset = 0
-        for i, p in enumerate(splitted_text):
+        for i, (ch, width, fnt) in enumerate(chars_info):
             txt_img_draw.text(
                 (
                     x_offset + i * character_spacing * int(not word_split),
                     y_offset,
                 ),
-                p,
+                ch,
                 fill=fill,
-                font=image_font,
+                font=fnt,
                 stroke_width=stroke_width,
                 stroke_fill=stroke_fill,
             )
@@ -175,18 +243,18 @@ def _generate_horizontal_text(
                     x_offset + i * character_spacing * int(not word_split),
                     y_offset,
                 ),
-                p,
+                ch,
                 fill=
                 (
                     (char_index + 1) // (255 * 255),
                     (char_index + 1) // 255,
                     (char_index + 1) % 255,
                 ),
-                font=image_font,
+                font=fnt,
                 stroke_width=stroke_width,
                 stroke_fill=stroke_fill,
             )
-            x_offset += piece_widths[i]
+            x_offset += width
             char_index += 1
         y_offset += line_height
 
@@ -206,16 +274,46 @@ def _generate_vertical_text(
     fit: bool,
     stroke_width: int = 0,
     stroke_fill: str = "#282828",
+    missing_glyph_strategy: str = "fallback",
+    fallback_font: Optional[str] = None,
 ) -> Tuple:
     image_font = ImageFont.truetype(font=font, size=font_size)
+    fallback_image_font = (
+        ImageFont.truetype(font=fallback_font, size=font_size)
+        if fallback_font
+        else None
+    )
 
     space_height = int(get_text_height(image_font, " ") * space_width)
 
-    char_heights = [
-        get_text_height(image_font, c) if c != " " else space_height for c in text
-    ]
-    text_width = max([get_text_width(image_font, c) for c in text])
-    text_height = sum(char_heights) + character_spacing * len(text)
+    chars_info = []
+    for c in text:
+        if c == " ":
+            height = space_height
+            width = get_text_width(image_font, c)
+            chars_info.append((c, width, height, image_font))
+            continue
+
+        selected_font = _select_font_for_char(
+            c,
+            font,
+            image_font,
+            missing_glyph_strategy,
+            fallback_image_font,
+            fallback_font,
+        )
+        if selected_font is None:
+            continue
+
+        width = get_text_width(selected_font, c)
+        height = get_text_height(selected_font, c)
+        chars_info.append((c, width, height, selected_font))
+
+    text_width = max([w for _, w, _, _ in chars_info]) if chars_info else 0
+    text_height = (
+        sum([h for _, _, h, _ in chars_info])
+        + character_spacing * len(chars_info)
+    )
 
     txt_img = Image.new("RGBA", (text_width, text_height), (0, 0, 0, 0))
     txt_mask = Image.new("RGBA", (text_width, text_height), (0, 0, 0, 0))
@@ -242,23 +340,27 @@ def _generate_vertical_text(
         rnd.randint(stroke_c1[2], stroke_c2[2]),
     )
 
-    for i, c in enumerate(text):
+    char_index = 0
+    y_offset = 0
+    for c, width, height, fnt in chars_info:
         txt_img_draw.text(
-            (0, sum(char_heights[0:i]) + i * character_spacing),
+            (0, y_offset),
             c,
             fill=fill,
-            font=image_font,
+            font=fnt,
             stroke_width=stroke_width,
             stroke_fill=stroke_fill,
         )
         txt_mask_draw.text(
-            (0, sum(char_heights[0:i]) + i * character_spacing),
+            (0, y_offset),
             c,
-            fill=((i + 1) // (255 * 255), (i + 1) // 255, (i + 1) % 255),
-            font=image_font,
+            fill=((char_index + 1) // (255 * 255), (char_index + 1) // 255, (char_index + 1) % 255),
+            font=fnt,
             stroke_width=stroke_width,
             stroke_fill=stroke_fill,
         )
+        y_offset += height + character_spacing
+        char_index += 1
 
     if fit:
         return txt_img.crop(txt_img.getbbox()), txt_mask.crop(txt_img.getbbox())
