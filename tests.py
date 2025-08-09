@@ -127,7 +127,7 @@ class DataGenerator(unittest.TestCase):
         self.assertTrue(len(strings) == 2 and len(strings[0].split(" ")) == 3)
 
     def test_multiline_text_generation(self):
-        single, _ = computer_text_generator.generate(
+        single, _, _ = computer_text_generator.generate(
             "TEST",
             "tests/font.ttf",
             "#010101",
@@ -138,7 +138,7 @@ class DataGenerator(unittest.TestCase):
             True,
             False,
         )
-        multi, _ = computer_text_generator.generate(
+        multi, _, _ = computer_text_generator.generate(
             "TEST\nTEST",
             "tests/font.ttf",
             "#010101",
@@ -150,6 +150,24 @@ class DataGenerator(unittest.TestCase):
             False,
         )
         self.assertTrue(multi.size[1] > single.size[1])
+
+    def test_filtered_label_matches_visible_text(self):
+        text = "AB汉C"
+        _, mask, label = computer_text_generator.generate(
+            text,
+            "tests/font.ttf",
+            "#010101",
+            32,
+            0,
+            1,
+            0,
+            True,
+            False,
+        )
+        from trdg.utils import mask_to_bboxes
+
+        self.assertEqual(label, "ABC")
+        self.assertEqual(len(mask_to_bboxes(mask)), len(label))
 
     def test_generate_data_with_format(self):
         FakeTextDataGenerator.generate(

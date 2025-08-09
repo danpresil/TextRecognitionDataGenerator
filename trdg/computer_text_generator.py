@@ -150,12 +150,15 @@ def _generate_horizontal_text(
     line_chars = []
     line_widths = []
     line_heights = []
+    rendered_lines = []
 
     for line in lines:
         chars_info = []
+        rendered_line = []
         for c in line:
             if c == " ":
                 chars_info.append((c, space_width, image_font))
+                rendered_line.append(c)
                 continue
 
             selected_font = _select_font_for_char(
@@ -178,6 +181,7 @@ def _generate_horizontal_text(
                 fallback_font,
             )
             chars_info.append((c, width, selected_font))
+            rendered_line.append(c)
 
         line_width = sum(w for _, w, _ in chars_info)
         if not word_split:
@@ -193,6 +197,7 @@ def _generate_horizontal_text(
         line_chars.append(chars_info)
         line_widths.append(line_width)
         line_heights.append(line_height)
+        rendered_lines.append("".join(rendered_line))
 
     text_width = max(line_widths) if line_widths else 0
     text_height = sum(line_heights)
@@ -257,11 +262,16 @@ def _generate_horizontal_text(
             x_offset += width
             char_index += 1
         y_offset += line_height
+    label = "\n".join(rendered_lines)
 
     if fit:
-        return txt_img.crop(txt_img.getbbox()), txt_mask.crop(txt_img.getbbox())
+        return (
+            txt_img.crop(txt_img.getbbox()),
+            txt_mask.crop(txt_img.getbbox()),
+            label,
+        )
     else:
-        return txt_img, txt_mask
+        return txt_img, txt_mask, label
 
 
 def _generate_vertical_text(
@@ -287,11 +297,13 @@ def _generate_vertical_text(
     space_height = int(get_text_height(image_font, " ") * space_width)
 
     chars_info = []
+    rendered_chars = []
     for c in text:
         if c == " ":
             height = space_height
             width = get_text_width(image_font, c)
             chars_info.append((c, width, height, image_font))
+            rendered_chars.append(c)
             continue
 
         selected_font = _select_font_for_char(
@@ -308,6 +320,7 @@ def _generate_vertical_text(
         width = get_text_width(selected_font, c)
         height = get_text_height(selected_font, c)
         chars_info.append((c, width, height, selected_font))
+        rendered_chars.append(c)
 
     text_width = max([w for _, w, _, _ in chars_info]) if chars_info else 0
     text_height = (
@@ -361,8 +374,13 @@ def _generate_vertical_text(
         )
         y_offset += height + character_spacing
         char_index += 1
+    label = "".join(rendered_chars)
 
     if fit:
-        return txt_img.crop(txt_img.getbbox()), txt_mask.crop(txt_img.getbbox())
+        return (
+            txt_img.crop(txt_img.getbbox()),
+            txt_mask.crop(txt_img.getbbox()),
+            label,
+        )
     else:
-        return txt_img, txt_mask
+        return txt_img, txt_mask, label
