@@ -108,6 +108,14 @@ class Generators(unittest.TestCase):
         img, lbl = next(generator)
         self.assertTrue(img.size[1] == 32 and isinstance(lbl, str))
 
+    def test_generator_from_strings_rtl_label(self):
+        text = "مرحبا"
+        generator = GeneratorFromStrings(
+            [text], count=1, language="ar", rtl=True, fonts=["tests/font_ar.ttf"]
+        )
+        _, lbl = next(generator)
+        self.assertEqual(lbl, text)
+
     def test_generator_from_dict_stops(self):
         generator = GeneratorFromDict(count=1)
         next(generator)

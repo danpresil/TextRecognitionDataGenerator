@@ -48,20 +48,20 @@ class GeneratorFromStrings:
     ):
         self.count = count
         self.strings = strings
+        # Keep a copy of the original strings so that labels remain in their
+        # natural order even when RTL reshaping is applied later on.
+        self.orig_strings = list(strings)
         self.fonts = fonts
         if len(fonts) == 0:
             self.fonts = load_fonts(language)
         self.rtl = rtl
-        self.orig_strings = []
         if self.rtl:
             if language == "ckb":
                 ar_reshaper_config = {"delete_harakat": True, "language": "Kurdish"}
             else:
                 ar_reshaper_config = {"delete_harakat": False}
             self.rtl_shaper = ArabicReshaper(configuration=ar_reshaper_config)
-            # save a backup of the original strings before arabic-reshaping
-            self.orig_strings = self.strings
-            # reshape the strings
+            # reshape the strings for rendering
             self.strings = self.reshape_rtl(self.strings, self.rtl_shaper)
         self.language = language
         self.size = size
@@ -101,7 +101,8 @@ class GeneratorFromStrings:
             raise StopIteration
         self.generated_count += 1
         font = self.fonts[(self.generated_count - 1) % len(self.fonts)]
-        string = self.strings[(self.generated_count - 1) % len(self.strings)]
+        idx = (self.generated_count - 1) % len(self.strings)
+        string = self.strings[idx]
         result = FakeTextDataGenerator.generate(
             self.generated_count,
             string,
@@ -134,12 +135,18 @@ class GeneratorFromStrings:
             self.image_mode,
             self.output_bboxes,
         )
+
         if self.output_mask:
-            image, mask, label = result
-            label = "".join(c for c in label if c == " " or font_has_glyph(font, c))
-            return image, mask, label
-        image, label = result
+            image, mask, _label = result
+        else:
+            image, _label = result
+
+        # Use original, unreshaped strings for labels when generating RTL text
+        label = self.orig_strings[idx] if self.rtl else _label
         label = "".join(c for c in label if c == " " or font_has_glyph(font, c))
+
+        if self.output_mask:
+            return image, mask, label
         return image, label
 
     def reshape_rtl(self, strings: list, rtl_shaper: ArabicReshaper):

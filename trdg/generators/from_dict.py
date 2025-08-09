@@ -104,8 +104,16 @@ class GeneratorFromDict:
 
     def next(self):
         if self.generator.generated_count >= self.steps_until_regeneration:
-            self.generator.strings = create_strings_from_dict(
+            new_strings = create_strings_from_dict(
                 self.length, self.allow_variable, self.batch_size, self.dict
             )
+            if getattr(self.generator, "rtl", False):
+                # Keep original strings for labels and reshape copies for rendering
+                self.generator.orig_strings = new_strings
+                self.generator.strings = self.generator.reshape_rtl(
+                    new_strings, self.generator.rtl_shaper
+                )
+            else:
+                self.generator.strings = new_strings
             self.steps_until_regeneration += self.batch_size
         return self.generator.next()
