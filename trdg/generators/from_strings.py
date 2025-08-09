@@ -100,43 +100,43 @@ class GeneratorFromStrings:
         if self.generated_count == self.count:
             raise StopIteration
         self.generated_count += 1
-        return (
-            FakeTextDataGenerator.generate(
-                self.generated_count,
-                self.strings[(self.generated_count - 1) % len(self.strings)],
-                self.fonts[(self.generated_count - 1) % len(self.fonts)],
-                None,
-                self.size,
-                None,
-                self.skewing_angle,
-                self.random_skew,
-                self.blur,
-                self.random_blur,
-                self.background_type,
-                self.distorsion_type,
-                self.distorsion_orientation,
-                self.is_handwritten,
-                0,
-                self.width,
-                self.alignment,
-                self.text_color,
-                self.orientation,
-                self.space_width,
-                self.character_spacing,
-                self.margins,
-                self.fit,
-                self.output_mask,
-                self.word_split,
-                self.image_dir,
-                self.stroke_width,
-                self.stroke_fill,
-                self.image_mode,
-                self.output_bboxes,
-            ),
-            self.orig_strings[(self.generated_count - 1) % len(self.orig_strings)]
-            if self.rtl
-            else self.strings[(self.generated_count - 1) % len(self.strings)],
+        result = FakeTextDataGenerator.generate(
+            self.generated_count,
+            self.strings[(self.generated_count - 1) % len(self.strings)],
+            self.fonts[(self.generated_count - 1) % len(self.fonts)],
+            None,
+            self.size,
+            None,
+            self.skewing_angle,
+            self.random_skew,
+            self.blur,
+            self.random_blur,
+            self.background_type,
+            self.distorsion_type,
+            self.distorsion_orientation,
+            self.is_handwritten,
+            0,
+            self.width,
+            self.alignment,
+            self.text_color,
+            self.orientation,
+            self.space_width,
+            self.character_spacing,
+            self.margins,
+            self.fit,
+            self.output_mask,
+            self.word_split,
+            self.image_dir,
+            self.stroke_width,
+            self.stroke_fill,
+            self.image_mode,
+            self.output_bboxes,
         )
+        if self.output_mask:
+            image, mask, label = result
+            return image, mask, label
+        image, label = result
+        return image, label
 
     def reshape_rtl(self, strings: list, rtl_shaper: ArabicReshaper):
         # reshape RTL characters before generating any image
