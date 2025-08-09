@@ -2,7 +2,7 @@ import os
 from typing import List, Tuple
 
 from trdg.data_generator import FakeTextDataGenerator
-from trdg.utils import load_dict, load_fonts
+from trdg.utils import load_fonts, font_has_glyph
 
 # support RTL
 from arabic_reshaper import ArabicReshaper
@@ -100,10 +100,12 @@ class GeneratorFromStrings:
         if self.generated_count == self.count:
             raise StopIteration
         self.generated_count += 1
+        font = self.fonts[(self.generated_count - 1) % len(self.fonts)]
+        string = self.strings[(self.generated_count - 1) % len(self.strings)]
         result = FakeTextDataGenerator.generate(
             self.generated_count,
-            self.strings[(self.generated_count - 1) % len(self.strings)],
-            self.fonts[(self.generated_count - 1) % len(self.fonts)],
+            string,
+            font,
             None,
             self.size,
             None,
@@ -134,8 +136,10 @@ class GeneratorFromStrings:
         )
         if self.output_mask:
             image, mask, label = result
+            label = "".join(c for c in label if c == " " or font_has_glyph(font, c))
             return image, mask, label
         image, label = result
+        label = "".join(c for c in label if c == " " or font_has_glyph(font, c))
         return image, label
 
     def reshape_rtl(self, strings: list, rtl_shaper: ArabicReshaper):
