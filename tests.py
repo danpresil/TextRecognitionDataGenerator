@@ -68,6 +68,39 @@ class Generators(unittest.TestCase):
             self.assertTrue(img.size[1] == 32, "Shape is not right")
             i += 1
 
+    def test_generators_filtered_labels(self):
+        text = "AB汉C"
+
+        gen_strings = GeneratorFromStrings([text], count=1, fonts=["tests/font.ttf"])
+        img, lbl = next(gen_strings)
+        self.assertEqual(lbl, "ABC")
+
+        gen_dict = GeneratorFromDict(count=1, fonts=["tests/font.ttf"])
+        gen_dict.generator.strings = [text]
+        img, lbl = next(gen_dict)
+        self.assertEqual(lbl, "ABC")
+
+        gen_random = GeneratorFromRandom(count=1, fonts=["tests/font.ttf"])
+        gen_random.generator.strings = [text]
+        img, lbl = next(gen_random)
+        self.assertEqual(lbl, "ABC")
+
+        from trdg.generators import from_wikipedia as wiki_gen
+
+        original_wiki = wiki_gen.create_strings_from_wikipedia
+
+        def mock_wiki(minimum_length, count, language):
+            return [text]
+
+        wiki_gen.create_strings_from_wikipedia = mock_wiki
+        try:
+            gen_wiki = GeneratorFromWikipedia(count=1, fonts=["tests/font.ttf"])
+            gen_wiki.generator.strings = [text]
+            img, lbl = next(gen_wiki)
+            self.assertEqual(lbl, "ABC")
+        finally:
+            wiki_gen.create_strings_from_wikipedia = original_wiki
+
     def test_generator_from_wikipedia_rtl(self):
         generator = GeneratorFromWikipedia(
             count=1, language="ar", rtl=True, fonts=["tests/font_ar.ttf"]

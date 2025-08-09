@@ -288,5 +288,5 @@ class FakeTextDataGenerator(object):
                         )
         else:
             if output_mask == 1:
-                return final_image, final_mask
-            return final_image
+                return final_image, final_mask, label
+            return final_image, label
