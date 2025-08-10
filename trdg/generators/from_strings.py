@@ -1,4 +1,5 @@
 import os
+import textwrap
 from typing import List, Tuple
 
 from trdg.data_generator import FakeTextDataGenerator
@@ -45,24 +46,12 @@ class GeneratorFromStrings:
         image_mode: str = "RGB",
         output_bboxes: int = 0,
         rtl: bool = False,
+        max_line_length: int = 0,
     ):
         self.count = count
-        self.strings = strings
-        # Keep a copy of the original strings so that labels remain in their
-        # natural order even when RTL reshaping is applied later on.
-        self.orig_strings = list(strings)
         self.fonts = fonts
         if len(fonts) == 0:
             self.fonts = load_fonts(language)
-        self.rtl = rtl
-        if self.rtl:
-            if language == "ckb":
-                ar_reshaper_config = {"delete_harakat": True, "language": "Kurdish"}
-            else:
-                ar_reshaper_config = {"delete_harakat": False}
-            self.rtl_shaper = ArabicReshaper(configuration=ar_reshaper_config)
-            # reshape the strings for rendering
-            self.strings = self.reshape_rtl(self.strings, self.rtl_shaper)
         self.language = language
         self.size = size
         self.skewing_angle = skewing_angle
@@ -74,7 +63,8 @@ class GeneratorFromStrings:
         self.distorsion_orientation = distorsion_orientation
         self.is_handwritten = is_handwritten
         self.width = width
-        self.alignment = alignment
+        self.rtl = rtl
+        self.alignment = 2 if self.rtl and alignment == 1 else alignment
         self.text_color = text_color
         self.orientation = orientation
         self.space_width = space_width
@@ -89,6 +79,17 @@ class GeneratorFromStrings:
         self.stroke_width = stroke_width
         self.stroke_fill = stroke_fill
         self.image_mode = image_mode
+        self.max_line_length = max_line_length
+        if self.rtl:
+            if language == "ckb":
+                ar_reshaper_config = {"delete_harakat": True, "language": "Kurdish"}
+            else:
+                ar_reshaper_config = {"delete_harakat": False}
+            self.rtl_shaper = ArabicReshaper(configuration=ar_reshaper_config)
+        else:
+            self.rtl_shaper = None
+
+        self.set_strings(strings)
 
     def __iter__(self):
         return self
@@ -143,11 +144,38 @@ class GeneratorFromStrings:
 
         # Use original, unreshaped strings for labels when generating RTL text
         label = self.orig_strings[idx] if self.rtl else _label
-        label = "".join(c for c in label if c == " " or font_has_glyph(font, c))
+        label = "".join(
+            c for c in label if c in [" ", "\n"] or font_has_glyph(font, c)
+        )
 
         if self.output_mask:
             return image, mask, label
         return image, label
+
+    def set_strings(self, strings: List[str]):
+        wrapped = [self._wrap_text(s) for s in strings]
+        # Keep a copy of the original strings so that labels remain in their
+        # natural order even when RTL reshaping is applied later on.
+        self.orig_strings = list(wrapped)
+        if self.rtl:
+            self.strings = self.reshape_rtl(wrapped, self.rtl_shaper)
+        else:
+            self.strings = wrapped
+
+    def _wrap_text(self, text: str) -> str:
+        if self.max_line_length and self.max_line_length > 0:
+            lines = []
+            for line in text.split("\n"):
+                lines.extend(
+                    textwrap.wrap(
+                        line,
+                        width=self.max_line_length,
+                        break_long_words=False,
+                        break_on_hyphens=False,
+                    )
+                )
+            return "\n".join(lines)
+        return text
 
     def reshape_rtl(self, strings: list, rtl_shaper: ArabicReshaper):
         # reshape RTL characters before generating any image
