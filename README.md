@@ -65,12 +65,16 @@ from trdg.generators import (
 generator = GeneratorFromStrings(
     ['Test1', 'Test2', 'Test3'],
     blur=2,
-    random_blur=True
+    random_blur=True,
+    max_line_length=20,
 )
 
 for img, lbl in generator:
     # Do something with the pillow images here.
 ```
+
+All generators support the `max_line_length` parameter to automatically wrap
+long sentences without breaking words.
 
 You can see the full class definition here:
 

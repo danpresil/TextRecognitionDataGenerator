@@ -46,6 +46,7 @@ class GeneratorFromRandom:
         stroke_fill: str = "#282828",
         image_mode: str = "RGB",
         output_bboxes: int = 0,
+        max_line_length: int = 0,
     ):
         self.generated_count = 0
         self.count = count
@@ -95,6 +96,7 @@ class GeneratorFromRandom:
             stroke_fill,
             image_mode,
             output_bboxes,
+            max_line_length=max_line_length,
         )
 
     def __iter__(self):
@@ -108,14 +110,16 @@ class GeneratorFromRandom:
 
     def next(self):
         if self.generator.generated_count >= self.steps_until_regeneration:
-            self.generator.strings = create_strings_randomly(
-                self.length,
-                self.allow_variable,
-                self.batch_size,
-                self.use_letters,
-                self.use_numbers,
-                self.use_symbols,
-                self.language,
+            self.generator.set_strings(
+                create_strings_randomly(
+                    self.length,
+                    self.allow_variable,
+                    self.batch_size,
+                    self.use_letters,
+                    self.use_numbers,
+                    self.use_symbols,
+                    self.language,
+                )
             )
             self.steps_until_regeneration += self.batch_size
         return self.generator.next()

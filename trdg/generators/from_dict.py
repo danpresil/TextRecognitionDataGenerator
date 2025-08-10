@@ -45,6 +45,7 @@ class GeneratorFromDict:
         output_bboxes: int = 0,
         path: str = "",
         rtl: bool = False,
+        max_line_length: int = 0,
     ):
         self.count = count
         self.length = length
@@ -94,6 +95,7 @@ class GeneratorFromDict:
             image_mode,
             output_bboxes,
             rtl,
+            max_line_length=max_line_length,
         )
 
     def __iter__(self):
@@ -107,13 +109,6 @@ class GeneratorFromDict:
             new_strings = create_strings_from_dict(
                 self.length, self.allow_variable, self.batch_size, self.dict
             )
-            if getattr(self.generator, "rtl", False):
-                # Keep original strings for labels and reshape copies for rendering
-                self.generator.orig_strings = new_strings
-                self.generator.strings = self.generator.reshape_rtl(
-                    new_strings, self.generator.rtl_shaper
-                )
-            else:
-                self.generator.strings = new_strings
+            self.generator.set_strings(new_strings)
             self.steps_until_regeneration += self.batch_size
         return self.generator.next()
