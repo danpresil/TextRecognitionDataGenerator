@@ -43,6 +43,7 @@ class GeneratorFromWikipedia:
         image_mode: str = "RGB",
         output_bboxes: int = 0,
         rtl: bool = False,
+        max_line_length: int = 0,
     ):
         self.generated_count = 0
         self.count = count
@@ -84,6 +85,7 @@ class GeneratorFromWikipedia:
             image_mode,
             output_bboxes,
             rtl,
+            max_line_length=max_line_length,
         )
 
     def __iter__(self):
@@ -100,12 +102,6 @@ class GeneratorFromWikipedia:
             new_strings = create_strings_from_wikipedia(
                 self.minimum_length, self.batch_size, self.language
             )
-            if self.generator.rtl:
-                self.generator.orig_strings = new_strings
-                self.generator.strings = self.generator.reshape_rtl(
-                    new_strings, self.generator.rtl_shaper
-                )
-            else:
-                self.generator.strings = new_strings
+            self.generator.set_strings(new_strings)
             self.steps_until_regeneration += self.batch_size
         return self.generator.next()
