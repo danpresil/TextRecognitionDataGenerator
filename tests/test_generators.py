@@ -2,7 +2,6 @@ import os
 from PIL import ImageOps
 from trdg.generators.from_strings import GeneratorFromStrings
 
-
 def test_max_line_length_wraps_without_breaking_words():
     test_font = os.path.join(os.path.dirname(__file__), 'font.ttf')
     gen = GeneratorFromStrings(
@@ -12,7 +11,6 @@ def test_max_line_length_wraps_without_breaking_words():
     )
     img, label = next(gen)
     assert label == 'This is a\nvery long\nsentence'
-
 
 def test_rtl_text_is_right_aligned():
     test_font = os.path.join(os.path.dirname(__file__), 'font_ar.ttf')
@@ -26,5 +24,7 @@ def test_rtl_text_is_right_aligned():
     )
     img, _ = next(gen)
     bbox = ImageOps.invert(img.convert('L')).getbbox()
+    # Right edge should be within 5px of image right
     assert img.width - bbox[2] <= 5
+    # Left edge should have some margin (>5px)
     assert bbox[0] > 5
