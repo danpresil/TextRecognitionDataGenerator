@@ -68,6 +68,30 @@ class Generators(unittest.TestCase):
             self.assertTrue(img.size[1] == 32, "Shape is not right")
             i += 1
 
+    def test_generator_from_wikipedia_uses_batch(self):
+        """Ensure that sentences are fetched in batches instead of per sample."""
+
+        from trdg.generators import from_wikipedia as wiki_gen
+
+        call_count = 0
+
+        def mock_wiki(minimum_length, count, language):
+            nonlocal call_count
+            call_count += 1
+            return ["TEST"] * count
+
+        original_wiki = wiki_gen.create_strings_from_wikipedia
+        wiki_gen.create_strings_from_wikipedia = mock_wiki
+        try:
+            generator = GeneratorFromWikipedia(fonts=["tests/font.ttf"])
+            for _ in range(100):
+                next(generator)
+            # ``create_strings_from_wikipedia`` should only be called once for
+            # the entire batch of 100 samples.
+            self.assertEqual(call_count, 1)
+        finally:
+            wiki_gen.create_strings_from_wikipedia = original_wiki
+
     def test_generators_filtered_labels(self):
         text = "AB汉C"
 

@@ -51,7 +51,13 @@ class GeneratorFromWikipedia:
         self.language = language
         self.rtl = rtl
 
-        self.batch_size = min(max(count, 1), 1000)
+        # If no count is specified (negative values), fall back to a generous
+        # batch size so that we don't fetch new Wikipedia sentences on every
+        # call. Previously ``count`` defaulted to ``-1`` which resulted in a
+        # batch size of ``1``. That meant ``create_strings_from_wikipedia`` was
+        # triggered for every generated sample, causing a network request to
+        # Wikipedia each time and drastically slowing down the generator.
+        self.batch_size = min(count, 1000) if count > 0 else 1000
         self.steps_until_regeneration = self.batch_size
         self.generator = GeneratorFromStrings(
             create_strings_from_wikipedia(
