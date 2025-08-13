@@ -49,9 +49,7 @@ class GeneratorFromStrings:
         max_line_length: int = 0,
     ):
         self.count = count
-        self.fonts = fonts
-        if len(fonts) == 0:
-            self.fonts = load_fonts(language)
+        self.fonts = fonts if len(fonts) > 0 else load_fonts(language)
         self.language = language
         self.size = size
         self.skewing_angle = skewing_angle
@@ -63,7 +61,8 @@ class GeneratorFromStrings:
         self.distorsion_orientation = distorsion_orientation
         self.is_handwritten = is_handwritten
         self.width = width
-        self.alignment = alignment
+        self.rtl = rtl
+        self.alignment = 2 if self.rtl and alignment == 1 else alignment
         self.text_color = text_color
         self.orientation = orientation
         self.space_width = space_width
@@ -79,7 +78,7 @@ class GeneratorFromStrings:
         self.stroke_fill = stroke_fill
         self.image_mode = image_mode
         self.max_line_length = max_line_length
-        self.rtl = rtl
+
         if self.rtl:
             if language == "ckb":
                 ar_reshaper_config = {"delete_harakat": True, "language": "Kurdish"}
