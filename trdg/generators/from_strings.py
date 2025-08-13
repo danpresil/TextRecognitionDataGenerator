@@ -62,7 +62,10 @@ class GeneratorFromStrings:
         self.is_handwritten = is_handwritten
         self.width = width
         self.rtl = rtl
-        self.alignment = 2 if self.rtl and alignment == 1 else alignment
+        # When generating right-to-left text, default to left alignment
+        # so the rendered text starts near the image's left edge unless a
+        # different alignment is explicitly requested.
+        self.alignment = 0 if self.rtl and alignment == 1 else alignment
         self.text_color = text_color
         self.orientation = orientation
         self.space_width = space_width
