@@ -192,6 +192,26 @@ class DataGenerator(unittest.TestCase):
         )
         self.assertTrue(multi.size[1] > single.size[1])
 
+    def test_multiline_right_alignment(self):
+        _, mask, _ = computer_text_generator.generate(
+            "AB\nC",
+            "tests/font.ttf",
+            "#010101",
+            32,
+            0,
+            1,
+            0,
+            True,
+            False,
+            alignment=2,
+        )
+        from trdg.utils import mask_to_bboxes
+
+        bboxes = mask_to_bboxes(mask)
+        right_edge_line1 = max(bboxes[0][2], bboxes[1][2])
+        right_edge_line2 = bboxes[2][2]
+        self.assertTrue(abs(right_edge_line1 - right_edge_line2) <= 1)
+
     def test_filtered_label_matches_visible_text(self):
         text = "AB汉C"
         _, mask, label = computer_text_generator.generate(

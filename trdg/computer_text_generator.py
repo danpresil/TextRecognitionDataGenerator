@@ -59,6 +59,7 @@ def generate(
     stroke_fill: str = "#282828",
     missing_glyph_strategy: str = "fallback",
     fallback_font: Optional[str] = None,
+    alignment: int = 0,
 ) -> Tuple:
     if orientation == 0:
         return _generate_horizontal_text(
@@ -74,6 +75,7 @@ def generate(
             stroke_fill,
             missing_glyph_strategy,
             fallback_font,
+            alignment,
         )
     elif orientation == 1:
         return _generate_vertical_text(
@@ -88,6 +90,7 @@ def generate(
             stroke_fill,
             missing_glyph_strategy,
             fallback_font,
+            alignment,
         )
     else:
         raise ValueError("Unknown orientation " + str(orientation))
@@ -135,6 +138,7 @@ def _generate_horizontal_text(
     stroke_fill: str = "#282828",
     missing_glyph_strategy: str = "fallback",
     fallback_font: Optional[str] = None,
+    alignment: int = 0,
 ) -> Tuple:
     image_font = ImageFont.truetype(font=font, size=font_size)
     fallback_image_font = (
@@ -229,8 +233,13 @@ def _generate_horizontal_text(
 
     char_index = 0
     y_offset = 0
-    for chars_info, line_height in zip(line_chars, line_heights):
-        x_offset = 0
+    for chars_info, line_height, line_width in zip(line_chars, line_heights, line_widths):
+        if alignment == 1:
+            x_offset = (text_width - line_width) // 2
+        elif alignment == 2:
+            x_offset = text_width - line_width
+        else:
+            x_offset = 0
         for i, (ch, width, fnt) in enumerate(chars_info):
             txt_img_draw.text(
                 (
@@ -286,6 +295,7 @@ def _generate_vertical_text(
     stroke_fill: str = "#282828",
     missing_glyph_strategy: str = "fallback",
     fallback_font: Optional[str] = None,
+    alignment: int = 0,
 ) -> Tuple:
     image_font = ImageFont.truetype(font=font, size=font_size)
     fallback_image_font = (

@@ -82,6 +82,7 @@ class FakeTextDataGenerator(object):
                 word_split,
                 stroke_width,
                 stroke_fill,
+                alignment=alignment,
             )
         text = label
         random_angle = rnd.randint(0 - skewing_angle, skewing_angle)
