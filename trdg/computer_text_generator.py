@@ -273,12 +273,22 @@ def _generate_horizontal_text(
         y_offset += line_height
     label = "\n".join(rendered_lines)
 
+    # if fit:
+    #     return (
+    #         txt_img.crop(txt_img.getbbox()),
+    #         txt_mask.crop(txt_img.getbbox()),
+    #         label,
+    #     )
+    # else:
+    #     return txt_img, txt_mask, label
     if fit:
-        return (
-            txt_img.crop(txt_img.getbbox()),
-            txt_mask.crop(txt_img.getbbox()),
-            label,
-        )
+        bbox = txt_img.getbbox()
+        if bbox:
+            left, top, right, bottom = bbox
+            # preserve full width so alignment survives; crop only vertically
+            txt_img  = txt_img.crop((0, top, text_width, bottom))
+            txt_mask = txt_mask.crop((0, top, text_width, bottom))
+        return txt_img, txt_mask, label
     else:
         return txt_img, txt_mask, label
 
