@@ -23,9 +23,9 @@ TH_UPPER_VOWELS = ["0xe31", "0xe34", "0xe35", "0xe36", "0xe37"]
 def _select_font_for_char(
     character: str,
     font_path: str,
-    image_font: ImageFont,
+    image_font: "ImageFont.ImageFont",
     missing_glyph_strategy: str,
-    fallback_font: Optional[ImageFont] = None,
+    fallback_font: "Optional[ImageFont.ImageFont]" = None,
     fallback_font_path: Optional[str] = None,
 ):
     if character == " ":
@@ -97,11 +97,11 @@ def generate(
 
 
 def _compute_character_width(
-    image_font: ImageFont,
+    image_font: "ImageFont.ImageFont",
     font_path: str,
     character: str,
     missing_glyph_strategy: str,
-    fallback_font: Optional[ImageFont] = None,
+    fallback_font: "Optional[ImageFont.ImageFont]" = None,
     fallback_font_path: Optional[str] = None,
 ) -> int:
     if len(character) == 1 and (
